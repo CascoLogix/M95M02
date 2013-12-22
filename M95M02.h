@@ -9,7 +9,7 @@
 
 class M95M02 {
 public:
-	M95M02(uint8_t address);				// Constructor
+	M95M02();								// Constructor
 	
 	void begin();							// Initialize interfaces
 	

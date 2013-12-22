@@ -7,7 +7,7 @@
 
 
 
-M95M02::M95M02(uint8_t address)
+M95M02::M95M02()
 {
 
 }
