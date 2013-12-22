@@ -1,15 +1,31 @@
 
 
+#ifndef M95M02_H
+#define M95M02_H
 
 
-#include <M95M02.h>
+#include <inttypes.h>
 
 
 class M95M02 {
-	public:
+public:
+	M95M02(uint8_t address);				// Constructor
 	
-	friend:
+	void begin();							// Initialize interfaces
 	
-	private:
+	uint8_t write(uint32_t address, 		// Write a byte to EEPROM
+					uint8_t data);
+	uint8_t write(uint32_t address, 		// Write a byte to EEPROM
+					uint8_t * buffer, 
+					uint8_t numBytes);
+	uint8_t read(uint32_t address, 			// Read a byte from EEPROM
+					uint8_t * buffer);
+	uint8_t read(uint32_t address, 			// Read a byte from EEPROM
+					uint8_t * buffer, 
+					uint8_t numBytes);
+	uint8_t getStatus();					// Read the EEPROM status register
 
-}
+private:
+
+};
+#endif // M95M02_H
