@@ -1,4 +1,4 @@
-/**************************************************************************/
+/******************************************************************************/
 /*!
  *  @file     M95M02.cpp
  *  @author   Clint Stevenson (Casco Logix)
@@ -11,8 +11,13 @@
  *  @section  HISTORY
  *  
  *  v1.0 - First release
+ *  v1.1 - Bitbucket Issue #1:
+ *		   Fixed data types in read and write to uint32_t to support full page
+ *         read/writes as well as reading/writing the entire chip. 
+ *		   Bitbucket Issue #2, Issue #3:
+ *		   Added proposed code for accessing the EEPROM's ID page.
  */
-/**************************************************************************/
+/******************************************************************************/
 
 
 #include "Arduino.h"
@@ -48,21 +53,43 @@ void commandWRITE (void);
 void commandREAD (void);
 
 
-M95M02::M95M02 ()
+/******************************************************************************/
+/*!
+ *  @function		M95M02
+ *  @parameters		None
+ *	@returns		None
+ *	@description	This is the constructor for the M95M02 library.
+/******************************************************************************/
+M95M02::M95M02 (void)
 {
 
 }
 
 
-void M95M02::begin ()						// Initialize interfaces
+/******************************************************************************/
+/*!
+ *  @function		begin
+ *  @parameters		None
+ *	@returns		None
+ *	@description	Initializes the SPI interface on the Arduino using the call
+					to the begin() method from the Arduino SPI library.
+/******************************************************************************/
+void M95M02::begin (void)
 {  
-	SPI.begin();        					// Join I2C bus
+	SPI.begin();
 }
 
 
-uint8_t M95M02::write (uint32_t address, uint8_t data)			// Write a byte to EEPROM
+/******************************************************************************/
+/*!
+ *  @function		write
+ *  @parameters		address, data
+ *	@returns		number of bytes written (always 1)
+ *	@description	Writes one byte to the specified address.
+/******************************************************************************/
+uint8_t M95M02::write (uint32_t address, uint8_t data)
 {
-	commandWRITE();						// Send WRITE command
+	commandWRITE();										// Send WRITE command
 	
     SPI.transfer((uint8_t)((address >> 16) && 0xFF));	// MSB
     SPI.transfer((uint8_t)((address >> 8) && 0xFF));	
@@ -74,57 +101,92 @@ uint8_t M95M02::write (uint32_t address, uint8_t data)			// Write a byte to EEPR
 }
 
 
-uint8_t M95M02::write (uint32_t address, uint8_t * buffer, uint8_t numBytes) 
+/******************************************************************************/
+/*!
+ *  @function		write
+ *  @parameters		address, pBuffer, numBytes
+ *	@returns		number of bytes written
+ *	@description	Writes the specified number of bytes starting at the 
+ *					specified address. Data is written from a buffer which must
+ *					be passed to the function. 
+/******************************************************************************/
+ uint8_t M95M02::write (uint32_t address, uint8_t * pBuffer, uint32_t numBytes) 
 {
-	commandWRITE();						// Send WRITE command
+	commandWRITE();										// Send WRITE command
 	
     SPI.transfer((uint8_t)((address >> 16) && 0xFF));	// MSB
     SPI.transfer((uint8_t)((address >> 8) && 0xFF));	
     SPI.transfer((uint8_t)(address & 0xFF)); 			// LSB
     
-	uint8_t index;
+	uint32_t index;
     for (index = 0; index < numBytes; index++)
     {
-		SPI.transfer(buffer[index]);
+		SPI.transfer(pBuffer[index]);
+		// TODO: add loop exit to handle write errors
 	}
 	
 	return index;
 }
   
-  
-uint8_t M95M02::read (uint32_t address, uint8_t * buffer)	// Read a byte from EEPROM
+
+/******************************************************************************/
+/*!
+ *  @function		read
+ *  @parameters		address, pBuffer
+ *	@returns		number of bytes read (always 1)
+ *	@description	Reads one byte from the specified address
+/******************************************************************************/
+uint8_t M95M02::read (uint32_t address, uint8_t * pBuffer)
 {
-	commandREAD();						// Send READ command
+	commandREAD();										// Send READ command
 
     SPI.transfer((uint8_t)((address >> 16) && 0xFF));	// MSB
     SPI.transfer((uint8_t)((address >> 8) && 0xFF));	
     SPI.transfer((uint8_t)(address & 0xFF)); 			// LSB
 	
-	*buffer = SPI.transfer(0);
+	*pBuffer = SPI.transfer(0);
 	
     return 1;
 }
 
 
-uint8_t M95M02::read (uint32_t address, uint8_t * buffer, uint8_t numBytes)
+/******************************************************************************/
+/*!
+ *  @function		read
+ *  @parameters		address, pBuffer, numBytes
+ *	@returns		number of bytes read
+ *	@description	Reads the specified number of bytes starting from the 
+ *					specified address. Data is placed into a buffer which must
+ *					be passed to the function. Buffer size must be greater than
+ *					or equal to the number of bytes being read.
+/******************************************************************************/
+uint8_t M95M02::read (uint32_t address, uint8_t * pBuffer, uint32_t numBytes)
 {
-	commandREAD();						// Send READ command
+	commandREAD();										// Send READ command
 
     SPI.transfer((uint8_t)((address >> 16) && 0xFF));	// MSB
     SPI.transfer((uint8_t)((address >> 8) && 0xFF));	
     SPI.transfer((uint8_t)(address & 0xFF)); 			// LSB
 	
-    uint8_t index;
+    uint32_t index;
     for (index = 0; index < numBytes; index++ )
 	{
-		buffer[index] = SPI.transfer(0);
+		pBuffer[index] = SPI.transfer(0);
 	}
 	
 	return index;
 }
   
   
-uint8_t M95M02::getStatus (void)				// Read the EEPROM status 
+/******************************************************************************/
+/*!
+ *  @function		getStatus
+ *  @parameters		None
+ *	@returns		EEPROM status register
+ *	@description	Reads the status register from the EEPROM and returns the
+ *					data
+/******************************************************************************/
+uint8_t M95M02::getStatus (void) 
 {
 	uint8_t retVal = 0;
 	SPI.transfer(M95M02_CMD_RDSR);
@@ -133,25 +195,147 @@ uint8_t M95M02::getStatus (void)				// Read the EEPROM status
 }
 
 
+/******************************************************************************/
+/*!
+ *  @function		commandWREN
+ *  @parameters		None
+ *	@returns		None
+ *	@description	Sends the WRITE_ENABLE command to the EEPROM. This should
+ *					happen immediately before sending the write command, 
+ *					including when writing to the EEPROM's status register.
+/******************************************************************************/
 void M95M02::commandWREN (void)
 {
     SPI.transfer(M95M02_CMD_WREN);
 }
 
 
+/******************************************************************************/
+/*!
+ *  @function		commandWRITE
+ *  @parameters		None
+ *	@returns		None
+ *	@description	Sends the WRITE command to the EEPROM. This should happen 
+ *					immediately before sending data to be written, including 
+ *					when writing to the EEPROM's status register.
+/******************************************************************************/
 void commandWRITE (void)
 {
     SPI.transfer(M95M02_CMD_WRITE);
 }
 
 
+/******************************************************************************/
+/*!
+ *  @function		commandREAD
+ *  @parameters		None
+ *	@returns		None
+ *	@description	Sends the READ command to the EEPROM. This should happen 
+ *					immediately before reading data from the EEPROM.
+/******************************************************************************/
 void commandREAD (void)
 {
     SPI.transfer(M95M02_CMD_READ);
 }
 
 
+/******************************************************************************/
+/*!
+ *  @function		getWIP
+ *  @parameters		None
+ *	@returns		WRITE_IN_PROGRESS flag from the EEPROM status register
+ *	@description	Reads the EEPROM status register and returns the masked
+ *					WIP flag. This function can be repeatedly called in a while
+ *					loop to repeatedly poll the WIP flag until cleared for 
+ *					faster write operation (as opposed to waiting in a delay
+ *					loop for the worst-case write time).
+/******************************************************************************/
 uint8_t M95M02::getWIP (void)
 {
 	return (this->getStatus() & M95M02_STATUS_REGISTER_WIP_BIT);
+}
+
+
+/******************************************************************************/
+/*!
+ *  @function		readIDPage
+ *  @parameters		address, pBuffer, size
+ *	@returns		None
+ *	@description	Reads the identification page to a buffer.
+/******************************************************************************/
+void M95M02::readIDPage (uint8_t address, uint8_t * pBuffer, uint16_t size)
+{
+    SPI.transfer(M95M02_CMD_READ_ID);
+    SPI.transfer(0x00);			// MSB
+    SPI.transfer(0x00);			// Address bit A10 must be 0; upper address 
+								// bits are Don't Care
+    SPI.transfer(address);		// LSB The data byte pointed to by the lower 
+								// address bits
+	
+    uint16_t index;
+    for(index = 0; index < size; index++)
+	{
+		pBuffer[index] = SPI.transfer(0);
+	}
+}
+
+
+/******************************************************************************/
+/*!
+ *  @function		writeIDPage
+ *  @parameters		address, pBuffer, size
+ *	@returns		None
+ *	@description	Writes the identification page from a buffer.
+/******************************************************************************/
+void M95M02::writeIDPage (uint8_t address, uint8_t * pBuffer, uint16_t size)
+{
+    SPI.transfer(M95M02_CMD_WRITE_ID);
+    SPI.transfer(0x00);			// MSB
+    SPI.transfer(0x00);			// Address bit A10 must be 0; upper address 
+								// bits are Don't Care
+    SPI.transfer(address);		// LSB The data byte pointed to by the lower 
+								// address bits
+	
+    uint16_t index;
+    for(index = 0; index < size; index++)
+	{
+    	SPI.transfer(pBuffer[index]);
+	}
+}
+
+
+/******************************************************************************/
+/*!
+ *  @function		readLockStatus
+ *  @parameters		data
+ *	@returns		None
+ *	@description	Reads the lock status from the EEPROM into a buffer
+/******************************************************************************/
+void M95M02::readLockStatus (uint8_t * data)
+{
+	SPI.transfer(M95M02_CMD_READ_LOCK_STATUS);
+	SPI.transfer(0x00);			// MSB
+	SPI.transfer(0x04);			// Address bit A10 must be 1; all other address 
+								// bits are Don't Care
+	SPI.transfer(0x00);			// LSB
+	*data = SPI.transfer(0);
+}
+
+
+/******************************************************************************/
+/*!
+ *  @function		lockID
+ *  @parameters		None
+ *	@returns		None
+ *	@description	Sends the lock ID command
+/******************************************************************************/
+void M95M02::lockID (void)
+{
+	SPI.transfer(M95M02_CMD_LOCK_ID);
+	SPI.transfer(0x00);			// MSB
+	SPI.transfer(0x04);			// Address bit A10 must be 1; all other address 
+								// bits are Don't Care
+	SPI.transfer(0x00);			// LSB
+	SPI.transfer(0x02);			// The data byte sent must be equal to the 
+								// binary value xxxx xx1x, where x = Don't Care
 }
