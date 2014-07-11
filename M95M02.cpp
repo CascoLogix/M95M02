@@ -16,6 +16,9 @@
  *         read/writes as well as reading/writing the entire chip. 
  *		   Bitbucket Issue #2, Issue #3:
  *		   Added proposed code for accessing the EEPROM's ID page.
+ *  v1.2 - Bitbucket issue #4:
+ *		   Fixed addressing bug where bitmask operation was using logical
+ *         'AND' operator (&&) instead of bitwise 'AND' operator (&).
  */
 /******************************************************************************/
 
@@ -91,8 +94,8 @@ uint8_t M95M02::write (uint32_t address, uint8_t data)
 {
 	commandWRITE();										// Send WRITE command
 	
-    SPI.transfer((uint8_t)((address >> 16) && 0xFF));	// MSB
-    SPI.transfer((uint8_t)((address >> 8) && 0xFF));	
+    SPI.transfer((uint8_t)((address >> 16) & 0xFF));	// MSB
+    SPI.transfer((uint8_t)((address >> 8) & 0xFF));	
     SPI.transfer((uint8_t)(address & 0xFF)); 			// LSB
 	
     SPI.transfer(data);
@@ -114,8 +117,8 @@ uint8_t M95M02::write (uint32_t address, uint8_t data)
 {
 	commandWRITE();										// Send WRITE command
 	
-    SPI.transfer((uint8_t)((address >> 16) && 0xFF));	// MSB
-    SPI.transfer((uint8_t)((address >> 8) && 0xFF));	
+    SPI.transfer((uint8_t)((address >> 16) & 0xFF));	// MSB
+    SPI.transfer((uint8_t)((address >> 8) & 0xFF));	
     SPI.transfer((uint8_t)(address & 0xFF)); 			// LSB
     
 	uint32_t index;
@@ -140,8 +143,8 @@ uint8_t M95M02::read (uint32_t address, uint8_t * pBuffer)
 {
 	commandREAD();										// Send READ command
 
-    SPI.transfer((uint8_t)((address >> 16) && 0xFF));	// MSB
-    SPI.transfer((uint8_t)((address >> 8) && 0xFF));	
+    SPI.transfer((uint8_t)((address >> 16) & 0xFF));	// MSB
+    SPI.transfer((uint8_t)((address >> 8) & 0xFF));	
     SPI.transfer((uint8_t)(address & 0xFF)); 			// LSB
 	
 	*pBuffer = SPI.transfer(0);
@@ -164,8 +167,8 @@ uint8_t M95M02::read (uint32_t address, uint8_t * pBuffer, uint32_t numBytes)
 {
 	commandREAD();										// Send READ command
 
-    SPI.transfer((uint8_t)((address >> 16) && 0xFF));	// MSB
-    SPI.transfer((uint8_t)((address >> 8) && 0xFF));	
+    SPI.transfer((uint8_t)((address >> 16) & 0xFF));	// MSB
+    SPI.transfer((uint8_t)((address >> 8) & 0xFF));	
     SPI.transfer((uint8_t)(address & 0xFF)); 			// LSB
 	
     uint32_t index;
